@@ -1,0 +1,28 @@
+{
+    "managers": [
+        {
+            "name": "arch",
+            "install_command": "yay -S",
+            "update_command": "yay -Syu",
+            "packages": [
+                { "command": "alacritty", "package": "alacritty" }
+            ]
+        },
+        {
+            "name": "rust",
+            "packages": [
+                {
+                    "command": "rustup",
+                    "install_command": "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh",
+                    "update_command": "rustup update"
+                }
+            ]
+        },
+        {
+            "name": "misc",
+            "packages": [
+                { "update_command": "zplugin self-update" }
+            ]
+        }
+    ]
+}
