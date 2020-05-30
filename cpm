@@ -1,196 +1,116 @@
-#!/usr/bin/env python
+#!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
 
-import os
-import json
-import shutil
-import shlex
-import subprocess
-import argparse
+cli_name='cpm'
+author='Emerson Max de Medeiros Silva'
+version='1.0'
 
+function cli_help() {
+    echo "Usage: $cli_name [command]
 
-class SubcommandHelpFormatter(argparse.RawDescriptionHelpFormatter):
-    def _format_action(self, action):
-        parts = super()._format_action(action)
-        if action.nargs == argparse.PARSER:
-            parts = "\n".join(parts.split("\n")[1:])
-        return parts
+Custom Package Manager
 
+commands:
+    install    Run install for managers
+    update     Run update for managers
+    list       List all available managers
+    help       Show this help
+    version    Show version
+"
+}
 
-def load_config_file():
-    config_home = os.path.join(os.environ['HOME'], '.config')
-    if 'XDG_CONFIG_HOME' in os.environ:
-        config_home = os.environ['XDG_CONFIG_HOME']
+if [[ $# < 1 ]]
+then
+    cli_help
+    exit 1
+fi
 
-    cpm_config_path = os.path.join(config_home, 'cpm')
-    os.makedirs(cpm_config_path, exist_ok=True)
-    config_path = os.path.join(cpm_config_path, 'config.json')
+export CPM_CONFIG_PATH="${XDG_CONFIG_HOME:-$HOME/.config}/cpm"
+export CPM_MANAGERS_PATH="$CPM_CONFIG_PATH/managers"
 
-    with open(config_path) as j:
-        return json.load(j)
-    return {}
+function run_manager() {
+    manager="$1"
+    shift 1
 
-
-def command_exists(cmd):
-    return cmd and shutil.which(cmd)
-
-
-def path_exists(path):
-    return path and os.path.exists(os.path.expandvars(path))
-
-
-def run_command(**kwargs):
-    args = kwargs.get('args', [])
-    if not args:
+    manager_path="$CPM_MANAGERS_PATH/$manager"
+    if [[ ! -x "$manager_path" ]]
+    then
+        echo "$manager is not a valid manager"
         return
-    if isinstance(args, str):
-        args = [args]
-    with subprocess.Popen(**kwargs) as _:
-        print(' '.join(args))
+    fi
 
+    $manager_path $@
+}
 
-def make_managers_list(managers):
-    return {o.get('name'): o for o in managers}
+function install_cmd() {
+    if [[ $# == 0 ]]
+    then
+        echo "Usage: $cli_name install <managers>"
+        exit 1
+    fi
 
+    for manager in $@
+    do
+        run_manager $manager install
+    done
+}
 
-def install_action(args):
-    configs = load_config_file()
-    managers = make_managers_list(configs.get('managers', []))
-    input_managers = args.managers if args.managers else managers.keys()
+function update_cmd() {
+    if [[ $# == 0 ]]
+    then
+        echo "Usage: $cli_name update <managers>"
+        exit 1
+    fi
 
-    for manager in input_managers:
-        data = managers.get(manager)
-        install_default_action(data)
+    for manager in $@
+    do
+        run_manager $manager update
+    done
+}
 
-
-def install_default_action(data):
-    package_list = []
-    for p in data.get('packages', []):
-        if p.get('install_command'):
-            install_custom_action(p)
+function list_cmd() {
+    for manager_path in $CPM_MANAGERS_PATH/*
+    do
+        if [[ ! -x "$manager_path" ]]
+        then
             continue
+        fi
 
-        cmd, path, pkg = p.get('command'), p.get('path'), p.get('package')
+        manager=$(basename $manager_path)
+        echo $manager
+    done
+}
 
-        if command_exists(cmd) or path_exists(path):
-            continue
+function help_cmd() {
+    cli_help
+    exit 0
+}
 
-        if not pkg:
-            continue
+function version_cmd() {
+    echo "$cli_name $version"
+}
 
-        if isinstance(pkg, list):
-            package_list += pkg
-        else:
-            package_list.append(pkg)
-
-    if not package_list:
-        return
-
-    run_command(args=shlex.split(data.get('install_command')) + package_list)
-
-
-def install_custom_action(package):
-    cmd, path, install_cmd = (
-        package.get('command'), package.get('path'),
-        package.get('install_command')
-    )
-
-    if not install_cmd:
-        return
-
-    if command_exists(cmd) or path_exists(path):
-        return
-
-    run_command(args=install_cmd, shell=True)
-
-
-def update_action(args):
-    configs = load_config_file()
-    managers = make_managers_list(configs.get('managers', []))
-    input_managers = args.managers if args.managers else managers.keys()
-
-    for manager in input_managers:
-        data = managers.get(manager)
-        update_default_action(data)
-
-
-def update_default_action(data):
-    package_list = []
-    for p in data.get('packages', []):
-        if p.get('update_command'):
-            update_custom_action(p)
-            continue
-
-        pkg = p
-        if not isinstance(p, str):
-            pkg = p.get('package')
-
-        if not pkg:
-            continue
-
-        if isinstance(pkg, list):
-            package_list += pkg
-        else:
-            package_list.append(pkg)
-
-    if not package_list:
-        return
-
-    run_command(args=shlex.split(data.get('update_command')) + package_list)
-
-
-def update_custom_action(package):
-    run_command(args=package.get('update_command'), shell=True)
-
-
-def list_action(args):
-    configs = load_config_file()
-    managers = make_managers_list(configs.get('managers', []))
-    print('Available managers')
-    for manager in managers:
-        print(f'- {manager}')
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        prog='cpm',
-        description='Customer Package Manager',
-        formatter_class=SubcommandHelpFormatter,
-        usage='%(prog)s [options] <command>'
-    )
-
-    actions_parser = parser.add_subparsers(title='commands')
-    install_parser = actions_parser.add_parser(
-        'install', help='Run managers install'
-    )
-    install_parser.add_argument(
-        'managers',
-        metavar='manager',
-        type=str,
-        nargs='*',
-        help='Managers to execute'
-    )
-    install_parser.set_defaults(func=install_action)
-
-    update_parse = actions_parser.add_parser(
-        'update', help='Run managers update'
-    )
-    update_parse.add_argument(
-        'managers',
-        metavar='manager',
-        type=str,
-        nargs='*',
-        help='Managers to execute'
-    )
-    update_parse.set_defaults(func=update_action)
-
-    list_parse = actions_parser.add_parser('list', help='List managers')
-    list_parse.set_defaults(func=list_action)
-
-    parser.set_defaults(func=lambda _: parser.print_help())
-
-    args = parser.parse_args()
-    args.func(args)
-
-
-if __name__ == '__main__':
-    main()
+action="$1"
+shift 1
+case $action in
+    install)
+        install_cmd $@
+        ;;
+    update)
+        update_cmd $@
+        ;;
+    list)
+        list_cmd
+        ;;
+    help)
+        help_cmd $@
+        ;;
+    version)
+        version_cmd
+        ;;
+    *)
+        echo -e "Invalid command '$action'\n"
+        cli_help
+        ;;
+esac
