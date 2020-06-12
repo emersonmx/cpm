@@ -20,6 +20,7 @@ Custom Package Manager
 commands:
     install    Run install for managers
     update     Run update for managers
+    edit       Edit a manager
     list       List all available managers
     help       Show this help
     version    Show version
@@ -72,6 +73,26 @@ function update_cmd() {
     done
 }
 
+function edit_cmd() {
+    if [[ $# == 0 ]]
+    then
+        echo "Usage: $cli_name edit <manager>"
+        exit 1
+    fi
+
+    manager="$1"
+    manager_path="$CPM_MANAGERS_PATH/$manager"
+
+    if [[ -z ${EDITOR+x} ]]
+    then
+        echo 'Variable $EDITOR has not been defined.'
+        echo 'Using vi by default.'
+        EDITOR='vi'
+    fi
+
+    $EDITOR $manager_path
+}
+
 function list_cmd() {
     for manager_path in $CPM_MANAGERS_PATH/*
     do
@@ -102,6 +123,9 @@ case $action in
         ;;
     update)
         update_cmd $@
+        ;;
+    edit)
+        edit_cmd $@
         ;;
     list)
         list_cmd
