@@ -2,6 +2,12 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+export CPM_CONFIG_PATH="${XDG_CONFIG_HOME:-$HOME/.config}/cpm"
+export CPM_MANAGERS_PATH="$CPM_CONFIG_PATH/managers"
+
+mkdir -p $CPM_CONFIG_PATH
+mkdir -p $CPM_MANAGERS_PATH
+
 cli_name='cpm'
 author='Emerson Max de Medeiros Silva'
 version='1.0'
@@ -25,9 +31,6 @@ then
     cli_help
     exit 1
 fi
-
-export CPM_CONFIG_PATH="${XDG_CONFIG_HOME:-$HOME/.config}/cpm"
-export CPM_MANAGERS_PATH="$CPM_CONFIG_PATH/managers"
 
 function run_manager() {
     manager="$1"
