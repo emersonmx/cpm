@@ -22,11 +22,7 @@ var updateCmd = &cobra.Command{
 			}
 
 			pkgs := []string{}
-
 			for _, t := range config.Tools.FilterByManager(m.Name) {
-				if t.Installed() {
-					continue
-				}
 				pkgs = append(pkgs, t.Package)
 			}
 

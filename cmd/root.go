@@ -14,7 +14,7 @@ var (
 		Use:     "stm",
 		Short:   "STM is a System Tool Manager",
 		Long:    "STM is a System Tool Manager",
-		Version: "1.0.1",
+		Version: "1.0.2",
 	}
 	config stm.Config
 )
