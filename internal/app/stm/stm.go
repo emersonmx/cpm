@@ -114,7 +114,7 @@ func renderTemplate(manager string, tmpl string, pkgs []string) (string, error) 
 		return "", err
 	}
 
-	return buf.String(), nil
+	return os.ExpandEnv(buf.String()), nil
 }
 
 func prepareCommand(c string) *exec.Cmd {
@@ -135,7 +135,7 @@ func prepareCommand(c string) *exec.Cmd {
 		args = splCmd[1:]
 	}
 
-	cmd := exec.Command(os.ExpandEnv(b), args...)
+	cmd := exec.Command(b, args...)
 	cmd.Env = os.Environ()
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -152,12 +152,14 @@ type Tool struct {
 }
 
 func (t Tool) Installed() bool {
-	_, err := exec.LookPath(t.Binary)
+	b := os.ExpandEnv(t.Binary)
+	_, err := exec.LookPath(b)
 	if err == nil {
 		return true
 	}
 
-	if _, err := os.Stat(t.Path); !os.IsNotExist(err) {
+	p := os.ExpandEnv(t.Path)
+	if _, err := os.Stat(p); !os.IsNotExist(err) {
 		return true
 	}
 
