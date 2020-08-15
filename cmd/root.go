@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/emersonmx/stm/internal/stm"
+	"github.com/emersonmx/stm/internal/app/stm"
 	"github.com/spf13/cobra"
 )
 
